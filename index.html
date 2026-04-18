@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚡ CLICKER SIMULATOR ⚡</title>
+<style>
+:root { --c0:#00ffff; --c1:#ff00ff; --c2:#ffff00; --dark:#05050f; }
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--dark);color:#fff;font-family:'Courier New',monospace;min-height:100vh;overflow-x:hidden}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,255,255,.02) 3px,rgba(0,255,255,.02) 4px);pointer-events:none;z-index:9999}
+
+/* HEADER */
+.hdr{text-align:center;padding:18px 20px 12px;border-bottom:1px solid rgba(0,255,255,.2);background:linear-gradient(180deg,rgba(0,255,255,.08),transparent)}
+.title{font-size:clamp(1.4rem,4vw,2.6rem);font-weight:900;text-transform:uppercase;letter-spacing:4px;background:linear-gradient(90deg,#00ffff,#ff00ff,#ffff00,#00ffff);background-size:300%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shimmer 3s linear infinite}
+@keyframes shimmer{to{background-position:300% center}}
+.sub{font-size:.7rem;opacity:.4;letter-spacing:3px;margin-top:4px}
+.global-bar{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:10px;flex-wrap:wrap}
+.gbar-wrap{width:260px;height:16px;background:rgba(255,255,255,.08);border:1px solid #ff00ff;border-radius:8px;overflow:hidden}
+.gbar-fill{height:100%;background:linear-gradient(90deg,#ff00ff,#ffff00,#ff0000);border-radius:8px;transition:width .5s ease;width:0%}
+.glabel{font-size:.75rem;opacity:.6}
+
+/* ARENA */
+.arena{display:flex;justify-content:center;align-items:flex-start;gap:16px;padding:24px 16px;flex-wrap:wrap}
+
+/* CARD */
+.card{position:relative;width:260px;background:rgba(0,15,35,.85);border-radius:14px;padding:18px;cursor:pointer;transition:transform .25s,box-shadow .25s;user-select:none}
+.card[data-i="0"]{border:2px solid var(--c0);box-shadow:0 0 18px rgba(0,255,255,.25)}
+.card[data-i="1"]{border:2px solid var(--c1);box-shadow:0 0 18px rgba(255,0,255,.25)}
+.card[data-i="2"]{border:2px solid var(--c2);box-shadow:0 0 18px rgba(255,255,0,.25)}
+.card:hover{transform:translateY(-6px) scale(1.03)}
+.card[data-i="0"]:hover{box-shadow:0 0 40px rgba(0,255,255,.6)}
+.card[data-i="1"]:hover{box-shadow:0 0 40px rgba(255,0,255,.6)}
+.card[data-i="2"]:hover{box-shadow:0 0 40px rgba(255,255,0,.6)}
+
+/* AVATAR */
+.av-wrap{position:relative;width:150px;height:150px;margin:0 auto 14px}
+.av-ring{position:absolute;inset:-6px;border-radius:50%;animation:spin 3.5s linear infinite}
+.card[data-i="0"] .av-ring{background:conic-gradient(transparent 60%,var(--c0),transparent)}
+.card[data-i="1"] .av-ring{background:conic-gradient(transparent 60%,var(--c1),transparent)}
+.card[data-i="2"] .av-ring{background:conic-gradient(transparent 60%,var(--c2),transparent)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.av-img{width:150px;height:150px;border-radius:50%;object-fit:cover;object-position:center 10%;position:relative;z-index:1;border:3px solid rgba(255,255,255,.15)}
+.card[data-i="0"] .av-wrap{animation:bob0 2s ease-in-out infinite}
+.card[data-i="1"] .av-wrap{animation:bob1 2.4s ease-in-out infinite}
+.card[data-i="2"] .av-wrap{animation:bob2 1.9s ease-in-out infinite}
+@keyframes bob0{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes bob1{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes bob2{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+
+.cname{text-align:center;font-size:1.1rem;font-weight:900;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px}
+.ctitle{text-align:center;font-size:.65rem;letter-spacing:1px;opacity:.6;margin-bottom:14px;text-transform:uppercase}
+
+/* STATS */
+.stats{display:flex;flex-direction:column;gap:7px}
+.srow{display:flex;align-items:center;gap:7px;font-size:.72rem}
+.slabel{width:48px;text-align:right;opacity:.7}
+.sbar{flex:1;height:9px;background:rgba(255,255,255,.08);border-radius:5px;overflow:hidden}
+.sfill{height:100%;border-radius:5px;transition:width .5s ease}
+.sfill.hp{background:linear-gradient(90deg,#00ff88,#00ffcc)}
+.sfill.ego{background:linear-gradient(90deg,#ff8800,#ffdd00)}
+.sfill.chaos{background:linear-gradient(90deg,#ff0055,#ff00ff)}
+.sval{width:28px;font-size:.68rem;opacity:.7}
+
+.cstatus{text-align:center;font-size:.78rem;min-height:28px;margin-top:8px;opacity:.75;font-style:italic;transition:all .3s}
+.wbadge{position:absolute;top:-8px;right:-8px;background:#ffff00;color:#000;font-size:.65rem;font-weight:900;padding:2px 7px;border-radius:8px;display:none}
+
+/* SHAKE / VICTORY / HURT */
+@keyframes shake{0%,100%{transform:translateX(0)}10%{transform:translateX(-6px) rotate(-2deg)}20%{transform:translateX(6px) rotate(2deg)}30%{transform:translateX(-6px)}40%{transform:translateX(6px)}50%{transform:translateX(-4px)}70%{transform:translateX(3px)}90%{transform:translateX(-1px)}}
+@keyframes victory{0%,100%{transform:scale(1)}25%{transform:scale(1.1) rotate(-3deg)}50%{transform:scale(1.15) rotate(3deg)}75%{transform:scale(1.1) rotate(-2deg)}}
+@keyframes hurt{0%,100%{filter:brightness(1)}25%{filter:brightness(4) hue-rotate(90deg)}75%{filter:brightness(.4) saturate(0)}}
+.do-shake{animation:shake .6s ease!important}
+.do-victory{animation:victory .5s ease 3!important}
+.do-hurt{animation:hurt .5s ease!important}
+
+/* CONTROLS */
+.ctrl{padding:16px 20px;text-align:center}
+.ctrl-label{font-size:.7rem;opacity:.4;letter-spacing:3px;margin-bottom:14px;text-transform:uppercase}
+.btns{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:16px}
+.btn{padding:11px 22px;border:none;border-radius:8px;font-family:'Courier New',monospace;font-size:.82rem;font-weight:700;letter-spacing:1px;cursor:pointer;text-transform:uppercase;transition:transform .15s,box-shadow .15s;position:relative;overflow:hidden}
+.btn:hover{transform:translateY(-2px)}
+.btn:active{transform:scale(.97)}
+.btn::after{content:'';position:absolute;inset:0;background:rgba(255,255,255,.15);opacity:0;transition:opacity .15s}
+.btn:active::after{opacity:1}
+.b-ego{background:linear-gradient(135deg,#ff8800,#ffdd00);color:#000}
+.b-arg{background:linear-gradient(135deg,#8800ff,#ff00ff);color:#fff}
+.b-chaos{background:linear-gradient(135deg,#ff0055,#ff6600);color:#fff}
+.b-comp{background:linear-gradient(135deg,#00ff88,#00ffcc);color:#000}
+.b-roast{background:linear-gradient(135deg,#ff00ff,#ff0055);color:#fff}
+.b-power{background:linear-gradient(135deg,#ffff00,#ff8800);color:#000}
+.b-duel{background:linear-gradient(135deg,#0088ff,#00ffff);color:#000;font-size:.95rem;padding:14px 38px;box-shadow:0 0 20px rgba(0,255,255,.4)}
+.b-duel:hover{box-shadow:0 0 40px rgba(0,255,255,.7)}
+.b-reset{background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.2)}
+
+/* LOG */
+.log-wrap{max-width:680px;margin:0 auto 20px;padding:0 16px}
+.log-box{background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:12px 14px;max-height:130px;overflow-y:auto}
+.log-title{font-size:.65rem;opacity:.35;margin-bottom:6px;letter-spacing:2px}
+.log-entry{font-size:.76rem;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);opacity:0;animation:fadeSlide .3s ease forwards}
+@keyframes fadeSlide{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:rgba(0,0,0,.3)}::-webkit-scrollbar-thumb{background:rgba(0,255,255,.3);border-radius:4px}
+
+/* POPUP */
+.popup-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:500;opacity:0;pointer-events:none;transition:opacity .3s}
+.popup-bg.on{opacity:1;pointer-events:all}
+.popup-box{background:linear-gradient(135deg,#050528,#100420);border-radius:18px;padding:28px 36px;text-align:center;max-width:460px;width:90%;transform:scale(.8);transition:transform .35s cubic-bezier(.34,1.56,.64,1);border-top:3px solid #00ffff}
+.popup-bg.on .popup-box{transform:scale(1)}
+.pop-emoji{font-size:3.5rem;margin-bottom:12px;display:block;animation:popbob .5s ease infinite alternate}
+@keyframes popbob{from{transform:scale(1)}to{transform:scale(1.12)}}
+.pop-title{font-size:1.3rem;font-weight:900;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px}
+.pop-text{font-size:.85rem;opacity:.8;line-height:1.6;margin-bottom:18px}
+.pop-close{padding:9px 28px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);border-radius:7px;color:#fff;font-family:'Courier New',monospace;font-size:.8rem;cursor:pointer;transition:background .2s;letter-spacing:1px}
+.pop-close:hover{background:rgba(255,255,255,.18)}
+
+/* GAME OVERLAY */
+.game-bg{position:fixed;inset:0;background:rgba(0,0,0,.97);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:600;opacity:0;pointer-events:none;transition:opacity .3s;padding:20px}
+.game-bg.on{opacity:1;pointer-events:all}
+.g-title{font-size:clamp(1.4rem,4vw,2rem);font-weight:900;text-transform:uppercase;letter-spacing:4px;color:#00ffff;text-shadow:0 0 20px #00ffff;margin-bottom:6px}
+.g-sub{font-size:.8rem;opacity:.5;letter-spacing:2px;margin-bottom:20px}
+.g-round{font-size:1.1rem;color:#ffff00;letter-spacing:2px;margin-bottom:10px}
+.g-instruct{font-size:.95rem;opacity:.7;margin-bottom:18px;animation:blink .8s ease infinite}
+@keyframes blink{0%,100%{opacity:.7}50%{opacity:.25}}
+.countdown-num{font-size:7rem;font-weight:900;color:#ffff00;text-shadow:0 0 40px #ffff00;animation:cdown .7s ease;margin:10px 0}
+@keyframes cdown{from{transform:scale(1.6);opacity:0}to{transform:scale(1);opacity:1}}
+
+/* DUEL ARENA */
+.duel-row{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:16px}
+.dbtn{width:170px;height:170px;border-radius:50%;border:3px solid;background:rgba(0,0,0,.5);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;transition:transform .1s,box-shadow .2s;font-family:'Courier New',monospace;font-weight:700;text-transform:uppercase;letter-spacing:1px;font-size:.72rem;position:relative;overflow:visible}
+.dbtn:hover{transform:scale(1.05)}
+.dbtn:active{transform:scale(.93)}
+.dbtn img{width:72px;height:72px;border-radius:50%;object-fit:cover;object-position:center 10%}
+.dbtn.lit{animation:litpulse .3s ease infinite alternate}
+@keyframes litpulse{from{box-shadow:0 0 20px var(--cc)}to{box-shadow:0 0 70px var(--cc),0 0 110px var(--cc)}}
+.dscore{position:absolute;top:-4px;right:-4px;background:#000;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:900;border:2px solid}
+.scores-row{display:flex;gap:20px;justify-content:center}
+.sc-item{text-align:center;font-size:.75rem;opacity:.7}
+.sc-num{font-size:1.4rem;font-weight:900;opacity:1}
+
+/* WINNER */
+.win-screen{text-align:center;display:none}
+.win-screen.show{display:block}
+.win-img{width:140px;height:140px;border-radius:50%;object-fit:cover;object-position:center 10%;border:5px solid #ffff00;box-shadow:0 0 40px #ffff00;animation:winspin .8s ease;margin-bottom:16px}
+@keyframes winspin{from{transform:rotateY(0deg) scale(0)}to{transform:rotateY(360deg) scale(1)}}
+.win-name{font-size:1.8rem;font-weight:900;text-shadow:0 0 20px currentColor;margin-bottom:4px;text-transform:uppercase;letter-spacing:3px}
+.win-sub{font-size:.85rem;opacity:.6;margin-bottom:18px}
+.win-scores{display:flex;gap:18px;justify-content:center;margin-bottom:22px}
+.wsc{text-align:center;font-size:.75rem;opacity:.7}
+.wsc-n{font-size:1.4rem;font-weight:900;opacity:1}
+
+/* PARTICLES / FLOATS */
+.particle{position:fixed;pointer-events:none;border-radius:50%;animation:pfly var(--dur) ease forwards;z-index:800}
+@keyframes pfly{to{transform:translate(var(--tx),var(--ty)) scale(0);opacity:0}}
+.float-e{position:fixed;pointer-events:none;font-size:1.8rem;animation:efloat 1.4s ease forwards;z-index:800}
+@keyframes efloat{to{transform:translateY(-140px) scale(.4);opacity:0}}
+.dmg-num{position:fixed;font-size:1.8rem;font-weight:900;pointer-events:none;z-index:800;animation:dmgfloat 1s ease forwards;text-shadow:0 0 10px currentColor}
+@keyframes dmgfloat{to{transform:translateY(-90px) scale(.5);opacity:0}}
+@keyframes flash{0%,100%{filter:brightness(1)}50%{filter:brightness(4)}}
+.do-flash{animation:flash .2s ease}
+@media(max-width:600px){.card{width:220px}.dbtn{width:130px;height:130px}.dbtn img{width:56px;height:56px}}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="title">⚡ Clicker Simulator ⚡</div>
+  <div class="sub">CLICK YOUR FRIENDS. EARN COINS. BUY UPGRADES. REPEAT.</div>
+  <div class="global-bar">
+    <span class="glabel">TOTAL SCORE:</span>
+    <div class="gbar-wrap"><div class="gbar-fill" id="gfill"></div></div>
+    <span class="glabel" style="min-width:80px" id="gval">0</span>
+  </div>
+  <div style="font-size:.85rem;margin-top:6px">💰 COINS: <span id="coinsDisplay" style="color:#ffff00;font-weight:900">0</span></div>
+</div>
+
+<!-- ARENA -->
+<div class="arena" id="arena"></div>
+
+<!-- CONTROLS -->
+<div class="ctrl">
+  <div class="ctrl-label">// UPGRADE SHOP //</div>
+  <div class="btns" id="shopBtns">
+    <button class="btn b-ego"   id="bb0" onclick="buyPower(0)">⬆️ ALEKSANDR POWER · <span id="bc0">10</span> coins</button>
+    <button class="btn b-comp"  id="ab0" onclick="buyAuto(0)">🤖 ALEKSANDR AUTO · <span id="ac0">50</span> coins</button>
+    <button class="btn b-arg"   id="bb1" onclick="buyPower(1)">⬆️ DMITRI POWER · <span id="bc1">10</span> coins</button>
+    <button class="btn b-chaos" id="ab1" onclick="buyAuto(1)">🤖 DMITRI AUTO · <span id="ac1">50</span> coins</button>
+    <button class="btn b-power" id="bb2" onclick="buyPower(2)">⬆️ NIKOLAI POWER · <span id="bc2">10</span> coins</button>
+    <button class="btn b-roast" id="ab2" onclick="buyAuto(2)">🤖 NIKOLAI AUTO · <span id="ac2">50</span> coins</button>
+  </div>
+  <button class="btn b-reset" onclick="resetAll()">↺ RESET</button>
+</div>
+
+<!-- LOG -->
+<div class="log-wrap">
+  <div class="log-box" id="log">
+    <div class="log-title">// EVENT LOG //</div>
+  </div>
+</div>
+
+<!-- POPUP -->
+<div class="popup-bg" id="popup">
+  <div class="popup-box" id="pbox">
+    <span class="pop-emoji" id="pemo"></span>
+    <div class="pop-title" id="ptitle"></div>
+    <div class="pop-text" id="ptext"></div>
+    <button class="pop-close" onclick="closePopup()">[ ACKNOWLEDGED ]</button>
+  </div>
+</div>
+
+<!-- MILESTONE POPUP only -->
+
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const CHARS = [
+  { name:'ALEKSANDR', title:'Supreme Overlord of Vibes',  img:'char1.jpg',  color:'#00ffff', clicks:0, power:1, auto:0, status:'Click me!' },
+  { name:'DMITRI',    title:'The Final Boss (Allegedly)', img:'char2.webp', color:'#ff00ff', clicks:0, power:1, auto:0, status:'Click me!' },
+  { name:'NIKOLAI',   title:'Secret NPC #3847',           img:'char3.webp', color:'#ffff00', clicks:0, power:1, auto:0, status:'Click me!' },
+];
+
+let totalScore = 0, coins = 0;
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+const set  = (id, p, v) => { const el = document.getElementById(id); if (el) el.style[p] = v; };
+const txt  = (id, v)    => { const el = document.getElementById(id); if (el) el.textContent = v; };
+const rand = n => Math.floor(Math.random() * n);
+
+const clickCost = i => Math.floor(10 * Math.pow(1.6, CHARS[i].power - 1));
+const autoCost  = i => Math.floor(50 * Math.pow(2,   CHARS[i].auto * 2));
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function renderArena() {
+  const a = document.getElementById('arena');
+  a.innerHTML = '';
+  CHARS.forEach((c, i) => {
+    const d = document.createElement('div');
+    d.className = 'card'; d.dataset.i = i;
+    d.onclick = e => cardClick(i, e);
+    d.innerHTML = `
+      <div class="av-wrap" style="width:200px;height:200px;margin:0 auto 14px">
+        <div class="av-ring"></div>
+        <img class="av-img" src="${c.img}" alt="${c.name}"
+             style="width:200px;height:200px;border-radius:50%;object-fit:cover;object-position:center 10%;position:relative;z-index:1;border:4px solid rgba(255,255,255,.2)"
+             onerror="this.style.background='#222'">
+      </div>
+      <div class="cname" style="color:${c.color};font-size:1.3rem">${c.name}</div>
+      <div class="ctitle" style="color:${c.color}88">${c.title}</div>
+      <div class="stats">
+        <div class="srow"><span class="slabel">CLICKS</span><div class="sbar"><div class="sfill hp"    id="hp${i}" style="width:0%"></div></div><span class="sval" id="hv${i}">0</span></div>
+        <div class="srow"><span class="slabel">POWER</span> <div class="sbar"><div class="sfill ego"   id="eg${i}" style="width:5%"></div></div><span class="sval" id="ev${i}">1x</span></div>
+        <div class="srow"><span class="slabel">AUTO</span>  <div class="sbar"><div class="sfill chaos" id="ch${i}" style="width:0%"></div></div><span class="sval" id="cv${i}">0/s</span></div>
+      </div>
+      <div class="cstatus" id="st${i}" style="font-size:.9rem;margin-top:10px">${c.status}</div>`;
+    a.appendChild(d);
+  });
+}
+
+function syncStats() {
+  const MILESTONES = [100,500,1000,5000,10000,50000,100000];
+  const next = MILESTONES.find(m => m > totalScore) || MILESTONES.at(-1) * 10;
+  const prev = [...MILESTONES].reverse().find(m => m <= totalScore) || 0;
+  set('gfill', 'width', Math.min((totalScore - prev) / (next - prev) * 100, 100) + '%');
+  txt('gval', totalScore.toLocaleString());
+  txt('coinsDisplay', Math.floor(coins).toLocaleString());
+
+  CHARS.forEach((c, i) => {
+    set(`hp${i}`, 'width', Math.min((c.clicks % 100), 100) + '%');
+    set(`eg${i}`, 'width', Math.min(c.power / 20 * 100, 100) + '%');
+    set(`ch${i}`, 'width', Math.min(c.auto / 5 * 100, 100) + '%');
+    txt(`hv${i}`, Math.floor(c.clicks).toLocaleString());
+    txt(`ev${i}`, c.power + 'x');
+    txt(`cv${i}`, c.auto.toFixed(1) + '/s');
+    txt(`st${i}`, c.status);
+  });
+  updateShopBtns();
+}
+
+function updateShopBtns() {
+  CHARS.forEach((c, i) => {
+    txt(`bc${i}`, clickCost(i).toLocaleString());
+    txt(`ac${i}`, autoCost(i).toLocaleString());
+    const bb = document.getElementById(`bb${i}`);
+    const ab = document.getElementById(`ab${i}`);
+    if (bb) bb.style.opacity = coins >= clickCost(i) ? '1' : '.4';
+    if (ab) ab.style.opacity = coins >= autoCost(i)  ? '1' : '.4';
+  });
+}
+
+// ── CLICK ─────────────────────────────────────────────────────────────────────
+function cardClick(i, e) {
+  const earned = CHARS[i].power;
+  totalScore += earned; coins += earned; CHARS[i].clicks += earned;
+  CHARS[i].status = `+${earned} 💰`;
+  anim(i, 'victory');
+  // floating number
+  const n = document.createElement('div');
+  n.className = 'dmg-num';
+  n.style.cssText = `left:${e.clientX}px;top:${e.clientY - 20}px;color:${CHARS[i].color}`;
+  n.textContent = `+${earned}`;
+  document.body.appendChild(n);
+  setTimeout(() => n.remove(), 1100);
+  particles(cardCtr(i), CHARS[i].color, 8);
+  checkMilestone();
+  syncStats();
+}
+
+// ── SHOP ──────────────────────────────────────────────────────────────────────
+function buyPower(i) {
+  const cost = clickCost(i);
+  if (coins < cost) { addLog(`Need ${cost} coins for ${CHARS[i].name}'s power upgrade.`); return; }
+  coins -= cost; CHARS[i].power++;
+  CHARS[i].status = `Power: ${CHARS[i].power}x 🔥`;
+  anim(i, 'victory');
+  addLog(`${CHARS[i].name} click power → ${CHARS[i].power}x (paid ${cost} coins)`);
+  syncStats();
+}
+
+function buyAuto(i) {
+  const cost = autoCost(i);
+  if (coins < cost) { addLog(`Need ${cost} coins for ${CHARS[i].name}'s auto upgrade.`); return; }
+  coins -= cost; CHARS[i].auto = Math.round((CHARS[i].auto + 0.5) * 10) / 10;
+  CHARS[i].status = `Auto: ${CHARS[i].auto}/s 🤖`;
+  addLog(`${CHARS[i].name} auto rate → ${CHARS[i].auto}/s (paid ${cost} coins)`);
+  syncStats();
+}
+
+// ── MILESTONES ────────────────────────────────────────────────────────────────
+const MS = [
+  {n:100,    e:'🌟', t:'FIRST 100!',        d:'The clicking has begun. There is no going back now.'},
+  {n:500,    e:'🔥', t:'500 CLICKS!',        d:'Fingers warming up. The characters are starting to feel it.'},
+  {n:1000,   e:'💯', t:'1,000 CLICKS!',      d:'Four digits. You have too much free time. Keep going.'},
+  {n:5000,   e:'⚡', t:'5,000 CLICKS!',      d:'Five thousand. Your mouse is starting to sweat.'},
+  {n:10000,  e:'👑', t:'10,000 CLICKS!',     d:'Ten thousand. You are the clicker now.'},
+  {n:50000,  e:'🚀', t:'50,000 CLICKS!',     d:'Fifty thousand. There is no help for you.'},
+  {n:100000, e:'🌌', t:'100,000 CLICKS!!',   d:'One hundred thousand. You have transcended. Seek help.'},
+];
+let lastMs = 0;
+function checkMilestone() {
+  const ms = MS.find(m => m.n > lastMs && totalScore >= m.n);
+  if (ms) { lastMs = ms.n; popup(ms.e, ms.t, ms.d, '#ffff00'); addLog(`MILESTONE: ${ms.t}`); }
+}
+
+// ── ANIMATIONS ────────────────────────────────────────────────────────────────
+function anim(i, type) {
+  const card = document.querySelector(`.card[data-i="${i}"]`);
+  if (!card) return;
+  card.classList.remove('do-shake','do-victory','do-hurt');
+  void card.offsetWidth;
+  card.classList.add(`do-${type}`);
+  setTimeout(() => card.classList.remove(`do-${type}`), 1000);
+}
+function cardCtr(i) {
+  const card = document.querySelector(`.card[data-i="${i}"]`);
+  if (!card) return { x: innerWidth/2, y: innerHeight/2 };
+  const r = card.getBoundingClientRect();
+  return { x: r.left + r.width/2, y: r.top + r.height/2 };
+}
+function particles(pos, color, n = 16) {
+  for (let k = 0; k < n; k++) {
+    const p = document.createElement('div'); p.className = 'particle';
+    const ang = Math.random()*Math.PI*2, dist = 60+Math.random()*130, size = 3+Math.random()*5, dur = .5+Math.random()*.7;
+    p.style.cssText = `left:${pos.x}px;top:${pos.y}px;width:${size}px;height:${size}px;background:${color};box-shadow:0 0 6px ${color};--tx:${Math.cos(ang)*dist}px;--ty:${Math.sin(ang)*dist}px;--dur:${dur}s;animation-delay:${Math.random()*.2}s;opacity:1`;
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), (dur+.3)*1000);
+  }
+}
+
+// ── POPUP ─────────────────────────────────────────────────────────────────────
+function popup(emoji, title, text, color = '#00ffff') {
+  document.getElementById('pemo').textContent = emoji;
+  document.getElementById('ptitle').textContent = title;
+  document.getElementById('ptitle').style.color = color;
+  document.getElementById('ptext').textContent = text;
+  document.getElementById('pbox').style.borderTopColor = color;
+  document.getElementById('popup').classList.add('on');
+}
+function closePopup() { document.getElementById('popup').classList.remove('on'); }
+
+// ── LOG ───────────────────────────────────────────────────────────────────────
+function addLog(msg) {
+  const log = document.getElementById('log');
+  const e = document.createElement('div'); e.className = 'log-entry';
+  const t = new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  e.innerHTML = `<span style="opacity:.35">[${t}]</span> ${msg}`;
+  log.appendChild(e); log.scrollTop = log.scrollHeight;
+  const all = log.querySelectorAll('.log-entry');
+  if (all.length > 25) all[0].remove();
+}
+
+// ── RESET ─────────────────────────────────────────────────────────────────────
+function resetAll() {
+  totalScore = 0; coins = 0; lastMs = 0;
+  CHARS.forEach(c => { c.clicks = 0; c.power = 1; c.auto = 0; c.status = 'Click me!'; });
+  syncStats();
+  document.querySelectorAll('.log-entry').forEach(e => e.remove());
+  addLog('Reset. Start clicking.');
+}
+
+// ── AUTO CLICKER (ticks every 200ms) ─────────────────────────────────────────
+setInterval(() => {
+  let any = false;
+  CHARS.forEach(c => {
+    if (c.auto > 0) {
+      const gain = c.auto * c.power * 0.2;
+      totalScore += gain; coins += gain; c.clicks += gain; any = true;
+    }
+  });
+  if (any) syncStats();
+}, 200);
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+renderArena(); syncStats();
+addLog('CLICKER SIMULATOR LOADED. Click the characters to earn coins. Buy upgrades below.');
+</script>
+</body>
+</html>
